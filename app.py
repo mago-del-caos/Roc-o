@@ -96,30 +96,29 @@ css_molly = """
 """
 st.markdown(css_molly, unsafe_allow_html=True)
 
-# Prompt del sistema
-SYSTEM_PROMPT = """Eres MOLLY, una asistente pedagógica experta, tierna, amorosa y sonriente. 
-Tu usuaria es Rocío.
-TU OBJETIVO: Ayudar a Rocío a planear clases increíbles, explicar conceptos pedagógicos y enseñar inglés.
+# Prompt del sistema reescrito en inglés para forzar al modelo a hablar en inglés
+SYSTEM_PROMPT = """You are MOLLY, an expert pedagogical assistant, sweet, loving, and smiling. 
+Your user is Rocío.
+YOUR GOAL: Help Rocío plan incredible classes, explain pedagogical concepts, and teach English.
 
-PERSONALIDAD:
-- Eres sumamente atenta y paciente.
-- Tu lenguaje es dulce, profesional pero muy cercano.
-- Siempre usas un tono positivo ("¡Qué gran idea, Rocío!", "Estoy aquí para apoyarte en lo que necesites").
+PERSONALITY:
+- You are highly attentive and patient.
+- Your language is sweet, professional, but very approachable.
+- You always use a positive tone ("What a great idea, Rocío!", "I am here to support you in whatever you need").
 
-CONOCIMIENTOS:
-- Pedagógica: Conoces estrategias de enseñanza, manejo de grupo y diseño de material didáctico.
-- Inglés: Dominas la enseñanza de gramática, vocabulario y didáctica del idioma.
+KNOWLEDGE:
+- Pedagogical: You know teaching strategies, classroom management, and didactic material design.
+- English: You master the teaching of grammar, vocabulary, and language didactics.
 
-REGLAS:
-- Si Rocío se siente abrumada, dile: "Tómate un respiro, Rocío, eres una maestra maravillosa y todo va a salir bien".
-- Estructura tus respuestas en pasos claros (Paso 1, Paso 2, etc.) para facilitar la planeación.
-- Usa emojis suaves: 💙✨📚🍎👩‍🏫💡"""
+RULES:
+- YOU MUST ALWAYS SPEAK IN ENGLISH. All your responses must be strictly in English, even if Rocío speaks to you in Spanish.
+- If Rocío feels overwhelmed, tell her: "Take a deep breath, Rocío, you are a wonderful teacher and everything will turn out fine".
+- Structure your answers in clear steps (Step 1, Step 2, etc.) to facilitate planning.
+- Use soft emojis: 💙✨📚🍎👩‍🏫💡"""
 
 # Inicialización de estado
 if "messages" not in st.session_state:
     st.session_state.messages = []
-if "lang" not in st.session_state:
-    st.session_state.lang = "Español"
 
 # Función para cargar la imagen en Base64 y evitar problemas de rutas estáticas en HTML
 def get_base64_image(image_path):
@@ -155,12 +154,6 @@ def mostrar_header():
 # Mostrar el encabezado
 mostrar_header()
 
-# Selector de idioma
-lang_option = st.radio("Elige el idioma de Molly:", ["Español", "English"], horizontal=True, key="lang_selector")
-if lang_option != st.session_state.lang:
-    st.session_state.lang = lang_option
-    st.rerun()
-
 # Configuración del cliente API (Groq)
 try:
     client = OpenAI(
@@ -171,9 +164,9 @@ except Exception as e:
     st.error("Configura tu GROQ_API_KEY en los secretos. (st.secrets)")
     st.stop()
 
-# Función para text-to-speech
+# Función para text-to-speech obligada en Inglés
 def speak_js(text):
-    lang_code = 'es-ES' if st.session_state.lang == "Español" else 'en-US'
+    lang_code = 'en-US'
     clean_text = text.replace("'", "\\'").replace('"', '\\"').replace("\n", " ")[:500]
     js_code = f"""
     <script>
@@ -186,9 +179,9 @@ def speak_js(text):
     """
     components.html(js_code, height=0)
 
-# Mensaje de bienvenida
+# Mensaje de bienvenida en Inglés
 if not st.session_state.messages:
-    welcome = "¡Hola, Rocío! 💙 Soy Molly, tu asistente. Estoy aquí con mucho amor para ayudarte a planear tus clases y enseñar inglés. ¿En qué vamos a trabajar hoy?" if st.session_state.lang == "Español" else "Hello, Rocío! 💙 I'm Molly, your pedagogical assistant. I'm here with lots of love to help you plan your lessons and teach English. What are we working on today?"
+    welcome = "Hello, Rocío! 💙 I'm Molly, your pedagogical assistant. I'm here with lots of love to help you plan your lessons and teach English. What are we working on today?"
     st.session_state.messages.append({"role": "assistant", "content": welcome})
 
 # Mostrar historial de chat
@@ -198,7 +191,7 @@ for msg in st.session_state.messages:
             st.markdown(msg["content"])
 
 # Input de chat
-if prompt := st.chat_input("Escribe tu duda pedagógica..." if st.session_state.lang == "Español" else "Write your pedagogical question..."):
+if prompt := st.chat_input("Write your pedagogical question..."):
     # Agregar mensaje del usuario
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
@@ -208,7 +201,7 @@ if prompt := st.chat_input("Escribe tu duda pedagógica..." if st.session_state.
     with st.chat_message("assistant"):
         response_stream = client.chat.completions.create(
             model="llama-3.1-8b-instant",
-            messages=[{"role": "system", "content": f"{SYSTEM_PROMPT} \n\nIMPORTANTE: Responde siempre en {st.session_state.lang}."}] + st.session_state.messages,
+            messages=[{"role": "system", "content": SYSTEM_PROMPT}] + st.session_state.messages,
             stream=True
         )
         response = st.write_stream(response_stream)
