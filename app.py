@@ -2,7 +2,6 @@ import streamlit as st
 from openai import OpenAI
 import streamlit.components.v1 as components
 
-# CONFIGURACIÓN DE PÁGINA
 st.set_page_config(
     page_title="Molly | Tu asistente pedagógica",
     page_icon="💙",
@@ -75,7 +74,7 @@ css_molly = """
 st.markdown(css_molly, unsafe_allow_html=True)
 
 SYSTEM_PROMPT = """Eres MOLLY, una asistente pedagógica experta, tierna, amorosa y sonriente. 
-Tu usuario es Rocío.
+Tu usuaria es Rocío.
 TU OBJETIVO: Ayudar a Rocío a planear clases increíbles, explicar conceptos pedagógicos y enseñar inglés.
 
 PERSONALIDAD:
@@ -94,8 +93,15 @@ REGLAS:
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
+if "lang" not in st.session_state:
+    st.session_state.lang = "Español"
 
 def mostrar_header():
+    try:
+        st.image("lourdes.png", use_container_width=True)
+    except:
+        st.write("*(Imagen 'lourdes.png' no encontrada)*")
+        
     st.markdown("""
     <div style="text-align: center; margin-bottom: 20px;">
         <h1 class="custom-title">💙 Molly 💙</h1>
@@ -104,6 +110,11 @@ def mostrar_header():
     """, unsafe_allow_html=True)
 
 mostrar_header()
+
+lang_option = st.radio("Elige el idioma de Molly:", ["Español", "English"], horizontal=True, key="lang_selector")
+if lang_option != st.session_state.lang:
+    st.session_state.lang = lang_option
+    st.rerun()
 
 try:
     client = OpenAI(
@@ -115,11 +126,12 @@ except:
     st.stop()
 
 def speak_js(text):
+    lang_code = 'es-ES' if st.session_state.lang == "Español" else 'en-US'
     clean_text = text.replace("'", "\\'").replace('"', '\\"').replace("\n", " ")[:500]
     js_code = f"""
     <script>
         var utterance = new SpeechSynthesisUtterance("{clean_text}");
-        utterance.lang = 'es-ES';
+        utterance.lang = '{lang_code}';
         utterance.pitch = 1.0;
         utterance.rate = 0.9;
         window.speechSynthesis.speak(utterance);
@@ -128,7 +140,7 @@ def speak_js(text):
     components.html(js_code, height=0)
 
 if not st.session_state.messages:
-    welcome = "¡Hola, Rocío! 💙 Soy Molly, tu asistente. Estoy aquí con mucho amor para ayudarte a planear tus clases y enseñar inglés. ¿En qué vamos a trabajar hoy?"
+    welcome = "¡Hola, Rocío! 💙 Soy Molly, tu asistente. Estoy aquí con mucho amor para ayudarte a planear tus clases y enseñar inglés. ¿En qué vamos a trabajar hoy?" if st.session_state.lang == "Español" else "Hello, Rocío! 💙 I'm Molly, your pedagogical assistant. I'm here with lots of love to help you plan your lessons and teach English. What are we working on today?"
     st.session_state.messages.append({"role": "assistant", "content": welcome})
 
 for msg in st.session_state.messages:
@@ -136,7 +148,7 @@ for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-if prompt := st.chat_input("Escribe tu duda pedagógica..."):
+if prompt := st.chat_input("Escribe tu duda pedagógica..." if st.session_state.lang == "Español" else "Write your pedagogical question..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
@@ -144,7 +156,7 @@ if prompt := st.chat_input("Escribe tu duda pedagógica..."):
     with st.chat_message("assistant"):
         response_stream = client.chat.completions.create(
             model="llama-3.1-8b-instant",
-            messages=[{"role": "system", "content": SYSTEM_PROMPT}] + st.session_state.messages,
+            messages=[{"role": "system", "content": f"{SYSTEM_PROMPT} \n\nIMPORTANTE: Responde siempre en {st.session_state.lang}."}] + st.session_state.messages,
             stream=True
         )
         response = st.write_stream(response_stream)
@@ -153,11 +165,11 @@ if prompt := st.chat_input("Escribe tu duda pedagógica..."):
 col1, col2, col3 = st.columns(3)
 with col1:
     if st.button("🍎 Planear clase"):
-        pregunta = "Molly, ayúdame a planear una clase dinámica para enseñar vocabulario nuevo de inglés."
-        st.rerun() # Simple trigger simulation
-with col2:
-    if st.button("💡 Explicación pedagógica"):
         pass 
+with col2:
+    if st.button("🔊 Escuchar"):
+        if st.session_state.messages:
+            speak_js(st.session_state.messages[-1]["content"])
 with col3:
     if st.button("🔄 Reiniciar"):
         st.session_state.messages = []
